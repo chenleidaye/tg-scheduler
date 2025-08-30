@@ -11,4 +11,4 @@ COPY . .
 ENV TG_API_ID=0
 ENV TG_API_HASH=""
 
-CMD ["python", "main.py"]
+CMD ["python", "-u", "main.py"]
