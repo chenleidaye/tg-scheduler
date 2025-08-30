@@ -7,8 +7,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# 设置默认环境变量（可在 docker run 时覆盖）
-ENV TG_API_ID=0
-ENV TG_API_HASH=""
+# 设置时区为北京时间
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Python 输出实时刷新
+ENV PYTHONUNBUFFERED=1
 
 CMD ["python", "-u", "main.py"]
