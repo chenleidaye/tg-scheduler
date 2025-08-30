@@ -28,7 +28,6 @@ def log(message: str):
     print(f"[{now}] {message}")
 
 async def schedule_task(chat, time_str, text):
-    """单个任务：每天在指定时间发送消息"""
     while True:
         now = datetime.now(tz)
         target_time = datetime.strptime(time_str, "%H:%M").time()
@@ -39,7 +38,7 @@ async def schedule_task(chat, time_str, text):
             next_run += timedelta(days=1)
 
         wait = (next_run - now).total_seconds()
-        log(f"[{chat}] 下次发送时间: {next_run}, 内容: {text}")
+        log(f"[{chat}] 下次发送时间: {next_run.strftime('%Y-%m-%d %H:%M:%S')}, 内容: {text}")
         await asyncio.sleep(wait)
 
         try:
