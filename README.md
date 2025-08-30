@@ -1,7 +1,3 @@
-好的 👍 我帮你写一个完整的 README.md，方便你在 GitHub 仓库展示和查看。
-
-📄 README.md
-
 # 📌 TG-Scheduler
 
 [![Docker](https://img.shields.io/badge/Docker%20Hub-gvddfdf%2Ftg--scheduler-blue)](https://hub.docker.com/r/gvddfdf/tg-scheduler)
