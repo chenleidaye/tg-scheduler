@@ -1,57 +1,77 @@
-import asyncio
-import yaml
 import os
+import asyncio
 from datetime import datetime, timedelta
-from telethon import TelegramClient
-import traceback
 import pytz
 
-# ====== 时区 ======
-tz = pytz.timezone("Asia/Shanghai")
-
-# ====== 从环境变量读取 API 信息 ======
-api_id = int(os.getenv("TG_API_ID", "0"))
-api_hash = os.getenv("TG_API_HASH", "")
-session_name = "me_session"
-
-# ====== 加载配置文件 ======
-with open("config.yml", "r", encoding="utf-8") as f:
-    config = yaml.safe_load(f)
-
-tasks = config.get("tasks", [])
-
-client = TelegramClient(session_name, api_id, api_hash)
+# 日志文件路径
+LOG_FILE = "/app/tg-scheduler.log"
 
 def log(message: str):
-    """打印带北京时间戳的日志"""
-    now = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{now}] {message}")
+    """打印日志到控制台 + 写入日志文件"""
+    now = datetime.now(pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{now}] {message}"
+    print(line, flush=True)  # 控制台日志（docker logs 可见）
+    try:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except Exception as e:
+        print(f"[日志错误] {e}", flush=True)
 
-async def schedule_task(chat, time_str, text):
+
+async def send_message(chat_id: int, text: str):
+    """
+    模拟发送消息（这里你可以换成真实的 Telegram API 调用）
+    """
+    log(f"[{chat_id}] ✅ 发送消息: {text}")
+
+
+async def schedule_task(chat_id: int, send_time: str, content: str):
+    """
+    定时任务：每天在指定时间发送消息
+    send_time: "HH:MM" (北京时间)
+    """
+    tz = pytz.timezone("Asia/Shanghai")
+
     while True:
         now = datetime.now(tz)
-        target_time = datetime.strptime(time_str, "%H:%M").time()
-        next_run = datetime.combine(now.date(), target_time)
-        next_run = tz.localize(next_run)
+        target = tz.localize(datetime.combine(now.date(), datetime.strptime(send_time, "%H:%M").time()))
 
-        if now.time() > target_time:
-            next_run += timedelta(days=1)
+        # 如果今天的时间已经过了，推到明天
+        if now >= target:
+            target += timedelta(days=1)
 
-        wait = (next_run - now).total_seconds()
-        log(f"[{chat}] 下次发送时间: {next_run.strftime('%Y-%m-%d %H:%M:%S')}, 内容: {text}")
-        await asyncio.sleep(wait)
+        wait_seconds = (target - now).total_seconds()
+        log(f"[{chat_id}] 下次发送时间: {target}, 内容: {content}")
 
+        await asyncio.sleep(wait_seconds)
+        await send_message(chat_id, content)
+
+
+async def clear_logs_periodically():
+    """
+    每 7 天清理一次日志文件
+    """
+    while True:
+        await asyncio.sleep(7 * 24 * 60 * 60)  # 7 天
         try:
-            await client.send_message(chat, text)
-            log(f"✅ [{chat}] 已发送: {text}")
+            if os.path.exists(LOG_FILE):
+                open(LOG_FILE, "w").close()  # 清空日志
+                log("🧹 日志已清理")
         except Exception as e:
-            log(f"❌ [{chat}] 发送失败: {e}")
-            traceback.print_exc()
+            log(f"❌ 日志清理失败: {e}")
+
 
 async def main():
-    await client.start()
-    coroutines = [schedule_task(t["chat"], t["time"], t["text"]) for t in tasks]
-    await asyncio.gather(*coroutines)
+    # 启动清理日志任务
+    asyncio.create_task(clear_logs_periodically())
+
+    # 示例任务（每天 02:00 发送“赌狗签到”）
+    await asyncio.gather(
+        schedule_task(-1001379449445, "02:00", "赌狗签到"),
+        # 你可以继续添加其他任务 ↓
+        # schedule_task(-1001379449445, "08:00", "早安消息"),
+    )
+
 
 if __name__ == "__main__":
-    client.loop.run_until_complete(main())
+    asyncio.run(main())
