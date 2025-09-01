@@ -1,4 +1,5 @@
-FROM python:3.11-slim
+FROM python:3.11
+
 WORKDIR /app
 COPY main.py /app/
 COPY config.yml /app/
