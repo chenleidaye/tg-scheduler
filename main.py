@@ -65,19 +65,22 @@ async def main():
 
     client = TelegramClient(session_name, api_id, api_hash)
     await client.start()
-
     log("tg-scheduler 已启动")
 
-    # === 监听签到反馈（只转发你自己的消息） ===
+    # === 监听签到反馈（只转发自己触发的消息） ===
     @client.on(events.NewMessage(from_users=checkin_bot_id))
     async def handler(event):
-        if event.is_reply:
-            reply_msg = await event.get_reply_message()
-            if reply_msg.sender_id == notify_user:
-                if any(kw in reply_msg.message for kw in keywords) or \
-                   any(kw in event.raw_text for kw in keywords):
-                    await client.send_message(notify_user, f"📌 签到反馈:\n{event.raw_text}")
-                    log(f"已转发签到反馈: {event.raw_text}")
+        try:
+            if event.is_reply:
+                reply_msg = await event.get_reply_message()
+                # 检查是否为你自己触发的消息
+                if reply_msg and reply_msg.sender_id == notify_user:
+                    if any(kw in reply_msg.message for kw in keywords) or \
+                       any(kw in event.raw_text for kw in keywords):
+                        await client.send_message(notify_user, f"📌 签到反馈:\n{event.raw_text}")
+                        log(f"已转发签到反馈: {event.raw_text}")
+        except Exception as e:
+            log(f"监听转发错误: {e}")
 
     # === 并发运行定时任务和日志清理 ===
     tasks = [clear_logs_periodically()]
