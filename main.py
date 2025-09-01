@@ -9,7 +9,6 @@ from telethon import TelegramClient, events
 LOG_FILE = "/app/tg-scheduler.log"
 
 def log(message: str):
-    """打印日志 + 写入文件"""
     now = datetime.now(pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S")
     line = f"[{now}] {message}"
     print(line, flush=True)
@@ -20,7 +19,6 @@ def log(message: str):
         print(f"[日志错误] {e}", flush=True)
 
 async def send_message(client, chat_id: int, text: str):
-    """发送消息到指定 chat"""
     try:
         await client.send_message(chat_id, text)
         log(f"[{chat_id}] ✅ 发送消息: {text}")
@@ -28,7 +26,6 @@ async def send_message(client, chat_id: int, text: str):
         log(f"[{chat_id}] ❌ 发送失败: {e}")
 
 async def schedule_task(client, chat_id: int, send_time: str, content: str):
-    """定时任务：每天在指定时间发送消息"""
     tz = pytz.timezone("Asia/Shanghai")
     while True:
         now = datetime.now(tz)
@@ -41,9 +38,8 @@ async def schedule_task(client, chat_id: int, send_time: str, content: str):
         await send_message(client, chat_id, content)
 
 async def clear_logs_periodically():
-    """每 7 天清理日志"""
     while True:
-        await asyncio.sleep(7*24*60*60)
+        await asyncio.sleep(7*24*60*60)  # 每 7 天清理
         try:
             if os.path.exists(LOG_FILE):
                 open(LOG_FILE, "w").close()
@@ -52,37 +48,46 @@ async def clear_logs_periodically():
             log(f"❌ 日志清理失败: {e}")
 
 async def main():
-    # 读取配置
     with open("/app/config.yml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     api_id = config["telegram"]["api_id"]
     api_hash = config["telegram"]["api_hash"]
-    session_name = config["telegram"]["session"]
-    notify_user = config["telegram"]["notify_user"]        # 你的 TG ID
-    checkin_bot_id = config["telegram"]["checkin_bot_id"]  # 签到 Bot 的 ID
-    keywords = config["telegram"]["keywords"]              # 签到相关关键字
+    session_name = config.get("session", "bot_session")
 
+    notify_user = config["telegram"]["notify_user"]
+    checkin_bot_id = config["telegram"]["checkin_bot_id"]
+    keywords = config["telegram"]["keywords"]
+
+    notify_bot_token = config["telegram"]["notify_bot_token"]
+    notify_chat_id = config["telegram"]["notify_chat_id"]
+
+    # 主账号登录（个人账号或签到账号）
     client = TelegramClient(session_name, api_id, api_hash)
     await client.start()
+
+    # 通知 Bot 登录
+    notify_bot = TelegramClient('notify_bot', api_id, api_hash)
+    await notify_bot.start(bot_token=notify_bot_token)
+
     log("tg-scheduler 已启动")
 
-    # === 监听签到反馈（只转发自己触发的消息） ===
+    # 监听签到反馈，只转发自己触发的消息，通过通知 Bot 发给你
     @client.on(events.NewMessage(from_users=checkin_bot_id))
     async def handler(event):
         try:
             if event.is_reply:
                 reply_msg = await event.get_reply_message()
-                # 检查是否为你自己触发的消息
                 if reply_msg and reply_msg.sender_id == notify_user:
                     if any(kw in reply_msg.message for kw in keywords) or \
                        any(kw in event.raw_text for kw in keywords):
-                        await client.send_message(notify_user, f"📌 签到反馈:\n{event.raw_text}")
-                        log(f"已转发签到反馈: {event.raw_text}")
+                        await notify_bot.send_message(notify_chat_id,
+                                                      f"📌 签到反馈:\n{event.raw_text}")
+                        log(f"✅ 已通过通知 Bot 转发签到反馈: {event.raw_text}")
         except Exception as e:
-            log(f"监听转发错误: {e}")
+            log(f"❌ 监听转发错误: {e}")
 
-    # === 并发运行定时任务和日志清理 ===
+    # 并发运行定时任务 + 日志清理
     tasks = [clear_logs_periodically()]
     for job in config["jobs"]:
         tasks.append(schedule_task(client, job["chat_id"], job["time"], job["message"]))
