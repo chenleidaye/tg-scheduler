@@ -1,12 +1,13 @@
-tasks:
-  - chat: -1001379449445     # 群组/频道 ID 或 @用户名
-    time: "00:00"            # 每天的时间（24小时制）
-    text: "赌狗签到"         # 发送的内容
+telegram:
+  api_id: 123456
+  api_hash: "your_api_hash"
+  session: "tg_session"
+  notify_user: 5113786725      # 你的 TG ID
+  checkin_bot_id: 123456789    # 签到 Bot 的 ID
+  keywords: ["签到","打卡","成功","奖励"]
 
-  - chat: -1009876543210
-    time: "09:00"
-    text: "早安打卡"
-
-  - chat: "@mytestgroup"     # 也可以直接用群/频道用户名
-    time: "21:30"
-    text: "晚安~"
+jobs:
+  - chat_id: -1001379449445
+    time: "02:00"
+    message: "赌狗签到"
+  # 可继续添加其他任务
