@@ -10,8 +10,8 @@ LOG_FILE = "/app/tg-scheduler.log"
 
 def log(message: str):
     """打印日志 + 写入文件"""
-    现在 = datetime.当前(pytz.timezone("Asia/Shanghai"))。strftime("%Y-%m-%d %H:%M:%S")
-    line = f"[{当前}] {message}"
+    now = datetime.now(pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{now}] {message}"
     print(line, flush=True)
     try:
         with open(LOG_FILE, "a", encoding="utf-8") as f:
@@ -32,7 +32,7 @@ async def schedule_task(client, chat_id: int, send_time: str, content: str):
     tz = pytz.timezone("Asia/Shanghai")
     while True:
         now = datetime.now(tz)
-        target = tz.localize(datetime.combine(现在.date(), datetime.strptime(send_time, "%H:%M").time()))
+        target = tz.localize(datetime.combine(now.date(), datetime.strptime(send_time, "%H:%M").time()))
         if now >= target:
             target += timedelta(days=1)
         wait_seconds = (target - now).total_seconds()
