@@ -1,8 +1,17 @@
-FROM python:3.11
+# 使用官方 Python 镜像
+FROM python:3.11-slim
 
 WORKDIR /app
+
+# 复制应用
 COPY main.py /app/
 COPY config.yml /app/
+COPY requirements.txt /app/
 
-# 安装依赖（容器启动时执行，避免 build 失败）
-CMD ["sh", "-c", "python -m pip install --upgrade pip && pip install --no-cache-dir telethon==1.35.1 pyyaml pytz && python main.py"]
+# 安装依赖
+RUN python -m pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+VOLUME ["/app/config.yml", "/app/me_session.session"]
+
+CMD ["python", "main.py"]
