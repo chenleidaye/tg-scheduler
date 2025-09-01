@@ -5,7 +5,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # 复制项目文件
-COPY main.py config.yml /app/
+COPY main.py config.yml requirements.txt /app/
 
 # 安装系统依赖（编译部分 Python 包需要）
 RUN apt-get update && apt-get install -y --no-install-recommends \
